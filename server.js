@@ -1,42 +1,33 @@
-const express = require("express");
-const bodyParser = require("body-parser");
-const fetch = require("node-fetch");
+const express = require('express');
+const multer = require('multer');
+const cors = require('cors');
+const fs = require('fs');
+const path = require('path');
+
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
-app.use(bodyParser.json());
+const upload = multer({ dest: 'uploads/' });
 
-app.post("/evaluate", async (req, res) => {
-  const { question, answer } = req.body;
+app.use(cors());
+app.use(express.static(__dirname));
 
-  const payload = {
-    contents: [
-      {
-        role: "user",
-        parts: [
-          {
-            text: `Evaluate this junior accountant interview answer:\n\nQuestion: ${question}\n\nAnswer: ${answer}\n\nReturn Score (1–5), Feedback, and Suggestion.`
-          }
-        ]
-      }
-    ]
-  };
-
+app.post('/transcribe', upload.single('audio'), async (req, res) => {
   try {
-    const response = await fetch("https://generativelanguage.googleapis.com/v1beta/models/gemini-pro:generateContent?key=YOUR_GEMINI_API_KEY", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload)
-    });
+    const audioPath = path.join(__dirname, req.file.path);
+    
+    // TODO: Call Gemini Speech-to-Text API here with `audioPath`
+    // For now, return dummy transcript
+    res.json({ transcript: 'This is a dummy transcript. Gemini integration pending.' });
 
-    const data = await response.json();
-    const reply = data.candidates?.[0]?.content?.parts?.[0]?.text || "No response";
-    res.json({ evaluation: reply });
-  } catch (error) {
-    res.status(500).json({ error: error.toString() });
+    // Cleanup
+    fs.unlinkSync(audioPath);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to process audio.' });
   }
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+  console.log(`Server running at http://localhost:${PORT}`);
 });
